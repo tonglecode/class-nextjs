@@ -18,7 +18,7 @@ export default function Login() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     try {
-      const response = await axios.post("http://192.168.0.2:8000/login", {
+      const response = await axios.post("http://localhost:8000/login", {
         email,
         password,
       });
