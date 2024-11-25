@@ -31,6 +31,7 @@ export const todosFatch = async ({
         },
       }
     );
-    setTask(responseTodos.data.tasks);
+
+    setTask(responseTasks.data.tasks);
   }
 };

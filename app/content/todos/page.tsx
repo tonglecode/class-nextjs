@@ -3,6 +3,7 @@ import Layout from "@/components/layout";
 import Modal from "@/components/modals/modal";
 import CheckGreen from "@/components/svg/checkGreen";
 import TodosLogo from "@/components/svg/todosLogo";
+import AddTodoModal from "@/components/todos/addTodoModal";
 import todoColors from "@/components/todos/todoColors";
 import todoIcons from "@/components/todos/todoIcons";
 import { createTodoFatch } from "@/utils/fatch/createTodoFatch";
@@ -13,7 +14,8 @@ import { useEffect, useState } from "react";
 import { BiExpandVertical } from "react-icons/bi";
 
 export interface ITask {
-  name: string;
+  id: number;
+  title: string;
   color: string;
   icon: keyof typeof todoIcons | undefined;
 }
@@ -23,15 +25,30 @@ const Todos = () => {
   const [newTodoInput, setNewTodoInput] = useState<string>("");
   const [subTitle, setSubTitle] = useState<string>("");
 
-  const [task, setTask] = useState<ITask[]>([]);
+  const [currentTask, setCurrentTask] = useState<number | undefined>();
+
+  const [tasks, setTasks] = useState<ITask[]>([]);
 
   const [todos, setTodos] = useState<TodoType[]>([]);
 
   const [expandedTodo, setExpandedTodo] = useState<number | null>(null);
 
+  const addTodoHandle = (taskId: number) => {
+    if (showModal) {
+      setCurrentTask(undefined);
+      setShowModal(false);
+    } else {
+      setCurrentTask(taskId);
+      setShowModal(true);
+    }
+  };
   const addButtonHandle = async () => {
-    if (newTodoInput.replace(/\s/g, "") !== "") {
-      const newTodo = await createTodoFatch({ title: newTodoInput, subTitle });
+    if (newTodoInput.replace(/\s/g, "") !== "" && currentTask) {
+      const newTodo = await createTodoFatch({
+        taskId: currentTask,
+        title: newTodoInput,
+        subTitle,
+      });
 
       if (newTodo) {
         setTodos([
@@ -72,72 +89,25 @@ const Todos = () => {
 
   // 처음 todo 데이터 가져오기
   useEffect(() => {
-    todosFatch({ setTodos, setTask });
+    todosFatch({ setTodos, setTask: setTasks });
   }, []);
 
   useEffect(() => {
     console.log("todos", todos);
-    console.log("task", task);
-  }, [todos, task]);
+    console.log("task", tasks);
+  }, [todos, tasks]);
 
   return (
     <Layout mobileFootLess={true}>
       <div className="w-full flex flex-col items-center ">
         {/* modal */}
-        {showModal && (
-          <Modal setShowModal={setShowModal}>
-            <div className="w-80 bg-gray-800 rounded-lg shadow-lg p-6 space-y-4 text-white">
-              <h2 className="text-lg font-semibold">새 할일 만들기</h2>
-
-              <div>
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-gray-300"
-                >
-                  할일
-                </label>
-                <input
-                  onChange={(e) => setNewTodoInput(e.target.value)}
-                  className="mt-1 p-2 w-full border border-gray-600 rounded-md bg-gray-700 text-white"
-                  id="title"
-                  type="text"
-                  placeholder="할일 제목 입력"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="subtitle"
-                  className="block text-sm font-medium text-gray-300"
-                >
-                  내용
-                </label>
-                <input
-                  onChange={(e) => setSubTitle(e.target.value)}
-                  className="mt-1 p-2 w-full border border-gray-600 rounded-md bg-gray-700 text-white"
-                  id="subtitle"
-                  type="text"
-                  placeholder="내용 입력"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 focus:outline-none"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={addButtonHandle}
-                  className="px-4 py-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 rounded-md focus:outline-none"
-                >
-                  만들기
-                </button>
-              </div>
-            </div>
-          </Modal>
-        )}
+        {showModal &&
+          AddTodoModal({
+            setShowModal,
+            setNewTodoInput,
+            setSubTitle,
+            addButtonHandle,
+          })}
 
         <div className="w-full px-12">
           <div className="max-w-[56rem] flex flex-col items-center mx-auto">
@@ -148,12 +118,37 @@ const Todos = () => {
             {/* Desktop */}
             <div className="hidden lg:flex w-full justify-between font-extrabold mt-32 mb-12">
               <TodosLogo />
-              <div
+              {/* <div
                 onClick={() => setShowModal(!showModal)}
                 className="inline text-center px-12 py-2 bg-blue-500 text-white text-[1.5rem] font-normal rounded-md"
               >
                 Add new task
-              </div>
+              </div> */}
+            </div>
+
+            <div className="grid grid-cols-4 w-full text-white">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  onClick={() => {
+                    addTodoHandle(task.id);
+                  }}
+                >
+                  <div
+                    className={`relative hover:ring-4 bg-gray-900 rounded-lg w-full pl-16 py-4 cursor-pointer text-white text-[1.1rem]`}
+                  >
+                    {task.title}
+                    <div className="absolute top-1/2 -translate-y-1/2 left-5">
+                      <div
+                        className="w-8 h-8 rounded-full flex justify-center items-center"
+                        style={{ backgroundColor: task.color }}
+                      >
+                        {task.icon && todoIcons[task.icon]}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="h-[70vh] w-full flex flex-col items-center">
               <div className="h-full w-full flex items-center">
@@ -205,12 +200,12 @@ const Todos = () => {
                 </div>
               </div>
               <div className="lg:hidden">
-                <div
+                {/* <div
                   onClick={() => setShowModal(!showModal)}
                   className="inline text-center px-12 py-2 bg-blue-500 text-white text-[1.5rem] font-normal rounded-md"
                 >
                   Add new task
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
