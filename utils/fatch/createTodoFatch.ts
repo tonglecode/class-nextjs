@@ -1,9 +1,11 @@
 import axios from "axios";
 
 export const createTodoFatch = async ({
+  taskId,
   title,
   subTitle,
 }: {
+  taskId: number;
   title: string;
   subTitle: string;
 }) => {
@@ -11,7 +13,7 @@ export const createTodoFatch = async ({
   if (token) {
     const response = await axios.post(
       `${process.env.NEXT_PUBLIC_API_URL}createTodo`,
-      { title, subTitle, isDone: false },
+      { taskId, title, subTitle, isDone: false },
       {
         headers: {
           Authorization: `Bearer ${token}`,
