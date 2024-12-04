@@ -10,7 +10,9 @@ import { createTodoFatch } from "@/utils/fatch/createTodoFatch";
 import { doneTodosFatch } from "@/utils/fatch/doneTodoFatch";
 import { removeTodosFatch } from "@/utils/fatch/removeTodoFatch";
 import { todosFatch } from "@/utils/fatch/todosFatch";
-import { useEffect, useState } from "react";
+import { AddButtonHandle } from "@/utils/handles/AddButtonHandle";
+import { DoneHandle } from "@/utils/handles/DoneHandle";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { BiExpandVertical } from "react-icons/bi";
 
 export interface ITask {
@@ -24,64 +26,33 @@ const Todos = () => {
   const [showModal, setShowModal] = useState(false);
   const [newTodoInput, setNewTodoInput] = useState<string>("");
   const [subTitle, setSubTitle] = useState<string>("");
-
-  const [currentTask, setCurrentTask] = useState<number | undefined>();
-
   const [tasks, setTasks] = useState<ITask[]>([]);
-
+  const [task, setTask] = useState<ITask>();
   const [todos, setTodos] = useState<TodoType[]>([]);
-
   const [expandedTodo, setExpandedTodo] = useState<number | null>(null);
 
-  const addTodoHandle = (taskId: number) => {
+  const addTodoHandle = ({ task }: { task: ITask }) => {
     if (showModal) {
-      setCurrentTask(undefined);
+      setTask(undefined);
       setShowModal(false);
     } else {
-      setCurrentTask(taskId);
+      if (task) setTask(task);
       setShowModal(true);
     }
   };
-  const addButtonHandle = async () => {
-    if (newTodoInput.replace(/\s/g, "") !== "" && currentTask) {
-      const newTodo = await createTodoFatch({
-        taskId: currentTask,
-        title: newTodoInput,
-        subTitle,
-      });
+  const addButtonHandle = AddButtonHandle({
+    newTodoInput,
+    task,
+    subTitle,
+    setTodos,
+    todos,
+    tasks,
+    setShowModal,
+    setNewTodoInput,
+    setSubTitle,
+  });
 
-      if (newTodo) {
-        setTodos([
-          ...todos,
-          { id: newTodo.id, title: newTodoInput, isDone: false, subTitle },
-        ]);
-        setShowModal(false);
-      }
-      setNewTodoInput("");
-      setSubTitle("");
-    }
-  };
-  const deleteHandle = (id: number) => {
-    console.log(id);
-    const filtered = todos.filter((todo) => todo.id !== id);
-    setTodos(filtered);
-    removeTodosFatch({ id });
-  };
-
-  const doneHandle = (id: number) => {
-    const editTodos = todos.map(
-      (todo) => {
-        if (todo.id === id) {
-          doneTodosFatch({ id, isDone: !todo.isDone });
-          return { ...todo, isDone: !todo.isDone };
-        } else {
-          return { ...todo };
-        }
-      }
-      //   todo.id === id ? { ...todo, isDone: !todo.isDone } : { ...todo }
-    );
-    setTodos(editTodos);
-  };
+  const doneHandle = DoneHandle({ todos, setTodos });
 
   const toggleExpand = (id: number) => {
     setExpandedTodo(expandedTodo === id ? null : id);
@@ -101,13 +72,15 @@ const Todos = () => {
     <Layout mobileFootLess={true}>
       <div className="w-full flex flex-col items-center ">
         {/* modal */}
-        {showModal &&
-          AddTodoModal({
-            setShowModal,
-            setNewTodoInput,
-            setSubTitle,
-            addButtonHandle,
-          })}
+        {showModal && (
+          <AddTodoModal
+            task={task}
+            setShowModal={setShowModal}
+            setNewTodoInput={setNewTodoInput}
+            setSubTitle={setSubTitle}
+            addButtonHandle={addButtonHandle}
+          />
+        )}
 
         <div className="w-full px-12">
           <div className="max-w-[56rem] flex flex-col items-center mx-auto">
@@ -126,23 +99,21 @@ const Todos = () => {
               </div> */}
             </div>
 
-            <div className="grid grid-cols-4 w-full text-white">
+            <div className="grid grid-cols-4 w-full text-white gap-4">
               {tasks.map((task) => (
                 <div
                   key={task.id}
                   onClick={() => {
-                    addTodoHandle(task.id);
+                    addTodoHandle({ task });
                   }}
                 >
                   <div
-                    className={`relative hover:ring-4 bg-gray-900 rounded-lg w-full pl-16 py-4 cursor-pointer text-white text-[1.1rem]`}
+                    style={{ backgroundColor: task.color }}
+                    className={`relative hover:ring-4 rounded-lg w-full pl-16 py-4 cursor-pointer text-white text-[1.1rem]`}
                   >
                     {task.title}
                     <div className="absolute top-1/2 -translate-y-1/2 left-5">
-                      <div
-                        className="w-8 h-8 rounded-full flex justify-center items-center"
-                        style={{ backgroundColor: task.color }}
-                      >
+                      <div className="text-3xl rounded-full flex justify-center items-center">
                         {task.icon && todoIcons[task.icon]}
                       </div>
                     </div>
@@ -153,44 +124,51 @@ const Todos = () => {
             <div className="h-[70vh] w-full flex flex-col items-center">
               <div className="h-full w-full flex items-center">
                 <div className="w-full text-[2rem] flex flex-col gap-4">
-                  {todos?.map((item, index) => {
+                  {todos?.map((todo, index) => {
                     return (
                       <div key={index} className="relative">
                         <div
-                          onClick={() => doneHandle(item.id)}
+                          onClick={() => doneHandle(todo.id)}
+                          style={{
+                            backgroundColor: `${
+                              tasks.filter(
+                                (task) => task.id === todo.taskId
+                              )?.[0]?.color
+                            }`,
+                          }}
                           className={`relative bg-gray-900 ${
-                            expandedTodo === item.id
+                            expandedTodo === todo.id
                               ? "rounded-t"
                               : "rounded-lg"
                           }  w-full pl-16 py-4 cursor-pointer text-white text-[1.1rem] ${
-                            item.isDone && "line-through text-opacity-30"
+                            todo.isDone && "line-through text-opacity-30"
                           }`}
                         >
-                          {item.title}
+                          {todo.title}
                           <div className="absolute top-1/2 -translate-y-1/2 left-5">
-                            {item.isDone ? <CheckGreen size={28} /> : null}
+                            {todo.isDone ? <CheckGreen size={28} /> : null}
                           </div>
                         </div>
-                        {item.subTitle && (
+                        {todo.subTitle && (
                           <BiExpandVertical
                             size={22}
                             fill="#249900"
                             className={`absolute right-8 ${
-                              expandedTodo === item.id
+                              expandedTodo === todo.id
                                 ? "bottom-5"
                                 : "top-1/2 -translate-y-1/2"
                             }  text-green-400 cursor-pointer transition-max-height duration-400 ease-in-out`}
-                            onClick={() => toggleExpand(item.id)}
+                            onClick={() => toggleExpand(todo.id)}
                           />
                         )}
-                        {item.subTitle && (
+                        {todo.subTitle && (
                           <div
                             className={`overflow-hidden transition-max-height duration-300 ease-in-out ${
-                              expandedTodo === item.id ? "max-h-32" : "max-h-0"
+                              expandedTodo === todo.id ? "max-h-32" : "max-h-0"
                             }`}
                           >
                             <div className="p-4 pl-16 text-gray-300 bg-gray-800 rounded-b-lg text-[0.8rem] mt-1">
-                              {item.subTitle}
+                              {todo.subTitle}
                             </div>
                           </div>
                         )}
@@ -216,13 +194,3 @@ const Todos = () => {
 };
 
 export default Todos;
-
-const ex = {
-  todos: [
-    {
-      id: 1,
-      done: false,
-      todo: "12",
-    },
-  ],
-};
